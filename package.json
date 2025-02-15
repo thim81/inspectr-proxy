@@ -1,0 +1,30 @@
+{
+  "name": "inspectr-proxy",
+  "version": "1.0.0",
+  "description": "Inspectr - Proxy service to capture and inspect HTTP requests/responses with a built-in Inspectr UI.",
+  "author": "Tim Haselaars",
+  "homepage": "https://github.com/thim81/inspectr#readme",
+  "bugs": "https://github.com/thim81/inspectr-proxy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thim81/inspectr-proxy.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@inspectr/app": "^0.0.2"
+  },
+  "keywords": [
+    "inspectr",
+    "inspector",
+    "proxy",
+    "middleware",
+    "viewer",
+    "logger",
+    "request",
+    "response",
+    "webhooks",
+    "SSE"
+  ]
+}
