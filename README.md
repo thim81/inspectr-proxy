@@ -47,7 +47,7 @@ Once downloaded (or built), you can run the Inspectr proxy from the command line
 example:
 
 ```bash
-./inspectr --listen=":8080" --backend="http://localhost:4005" --print=true --app=true --appPort="9999"
+./inspectr --listen=":8080" --backend="http://localhost:3000" --print=true --app=true --appPort="9999"
 ```
 
 ### Command-Line Flags
@@ -63,23 +63,23 @@ example:
 
 ### Running the Embedded Inspectr UI
 
-When the `--app` flag is enabled, the proxy starts a separate server to serve the Inspectr App UI. The UI is served from
-embedded static assets (from the app folder) and includes an SSE endpoint at /api/sse.
+When the `--app` flag is enabled, the proxy starts a separate server to serve the Inspectr App UI.
 
 For example, if you run:
 
 ```bash
-./inspectr --app=true --appPort="9999"
+./inspectr --listen=":8080" --app=true
 ```
 
-Then visit http://localhost:9999 in your browser to view the Inspectr UI. The SSE endpoint is available
-at http://localhost:9999/api/sse.
+Then visit http://localhost:4004 in your browser to view the Inspectr UI. The SSE endpoint is available
+at http://localhost:4004/api/sse.
 
 ## How It Works
 
 1. Proxy Mode:
 
-   The proxy listens on the specified --listen address. If a backend is defined via --backend, it forwards the incoming
+   The proxy listens on the specified `--listen` address. If a backend is defined via `--backend`, it forwards the
+   incoming
    HTTP request to that backend and relays the response back to the client.
 
 2. Data Capture & Wrapping:
@@ -89,8 +89,8 @@ at http://localhost:9999/api/sse.
 
 3. Embedded Inspectr App:
 
-   The embedded Inspectr App server runs on the port specified by --appPort and serves the static files (embedded at
-   compile time) along with an SSE endpoint (/api/sse) for real‑time updates.
+   The embedded Inspectr App server runs on the port specified by `--appPort` and serves the Inspectr UI for real‑time
+   updates.
 
 4. Broadcasting & Logging:
 
@@ -103,43 +103,45 @@ at http://localhost:9999/api/sse.
 
 ### Inspecting API HTTP Traffic
 
-Suppose you have a backend service running on port `4005`. You want to inspect all HTTP request and responses sent to the backend service,
-log the details to the console, and view the request and response data in real time via the Inspectr UI running on port `9999`. 
+Suppose you have a backend service running on port `4005`. You want to inspect all HTTP request and responses sent to
+the backend service, log the details to the console, and view the request and response data in real time via the
+Inspectr UI running on port http://localhost:4004.
 
 You would start the proxy as follows:
 
 ```bash
 ./inspectr --listen=":8080" \
---backend="http://localhost:4005" \
---broadcast="http://localhost:9999/api/sse" \
+--backend="http://localhost:3000" \
 --print=true \
---app=true \
---appPort="9999"
+--app=true
 ```
 
 Explanation:
 
-- The proxy listens on port `8080` and forwards requests to the backend at port `4005`.
+- The proxy listens on port `8080` and forwards requests to the backend at "http://localhost:3000.
 - Captured request and response data is printed to the console.
-- Captured data is also sent to the Inspectr UI service at port `9999`. Visit http://localhost:9999 to view the
-  Inspectr UI.
+- Captured data is also sent to the Inspectr UI service at port `4004`. Visit http://localhost:4004 to view the Inspectr
+  UI.
 
 ### Inspecting Webhook Events
 
-In this case you want to inspect webhook events sent from a third-party service. You may not have a backend service to forward the requests to—instead you simply want to capture and inspect the incoming webhook payloads. You can start the proxy without a backend so that every incoming request receives a default 200 OK response while still capturing and broadcasting the webhook data:
+In this case you want to inspect webhook events sent from a third-party service. You may not have a backend service to
+forward the requests to—instead you simply want to capture and inspect the incoming webhook payloads. You can start the
+proxy without a backend so that every incoming request receives a default 200 OK response while still capturing and
+broadcasting the webhook data:
 
 ```bash
 ./inspectr --listen=":8080" \
 --print=true \
---app=true \
---appPort="9999"
+--app=true
 ```
 
 Explanation:
 
 - The proxy listens on port 8080 and immediately returns a 200 OK response for every incoming webhook event.
 - The webhook event payload details are captured and printed to the console.
-- The captured webhook event is send to the Inspectr UI service running on port 9999. Visit http://localhost:9999 to see the Inspectr UI in real time.
+- The captured webhook event is send to the Inspectr UI service. Visit http://localhost:40004 to see the Inspectr UI in
+  real time.
 
 ## Local development
 
