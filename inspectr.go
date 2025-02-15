@@ -1,5 +1,4 @@
 // inspectr_proxy.go
-
 package main
 
 import (
@@ -15,10 +14,13 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/localtunnel/go-localtunnel"
 )
 
 // --- Embedded Static Files ---
@@ -247,7 +249,7 @@ func proxyHandler(backendAddr, broadcastURL string, enablePrint, enableBroadcast
 		var respTimestamp string
 
 		if backendAddr != "" {
-			// Parse the backend address.
+			// Parse backend address.
 			parsedBackend, err := url.Parse(backendAddr)
 			if err != nil {
 				http.Error(w, "Invalid backend address", http.StatusInternalServerError)
@@ -303,6 +305,20 @@ func proxyHandler(backendAddr, broadcastURL string, enablePrint, enableBroadcast
 
 		latency := time.Since(startTime).Milliseconds()
 
+		// Build the full URL from the request.
+		fullURL := r.URL.String()
+		if r.URL.Scheme == "" {
+			proto := "http"
+			if forwardedProto := r.Header.Get("X-Forwarded-Proto"); forwardedProto != "" {
+				// Split by comma and use the first value (for values like "https, http").
+				parts := strings.Split(forwardedProto, ",")
+				if len(parts) > 0 {
+					proto = strings.TrimSpace(parts[0])
+				}
+			}
+			fullURL = proto + "://" + r.Host + r.URL.RequestURI()
+		}
+
 		// Extract client IP.
 		clientIP, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
@@ -312,7 +328,7 @@ func proxyHandler(backendAddr, broadcastURL string, enablePrint, enableBroadcast
 		// Build the InspectrData structure.
 		data := InspectrData{
 			Method: r.Method,
-			URL:    r.URL.String(),
+			URL:    fullURL,
 			Server: func() string {
 				if backendAddr != "" {
 					return backendAddr
@@ -365,10 +381,42 @@ func main() {
 	// App mode flags.
 	appMode := flag.Bool("app", false, "Start Inspectr App (serve embedded static assets and SSE endpoints)")
 	appPort := flag.String("appPort", "4004", "Port to serve the Inspectr App (default 4004)")
+	// Localtunnel flags.
+	ltEnabled := flag.Bool("localtunnel", false, "Enable localtunnel to expose the proxy publicly")
+	ltSubdomain := flag.String("localtunnelSubdomain", "", "Subdomain for localtunnel (optional)")
 	flag.Parse()
 
 	enableBroadcast := *broadcastURL != ""
 	enablePrint := *printLogs
+
+	// If localtunnel is enabled, start it in a separate goroutine.
+	if *ltEnabled {
+		// Extract port from listenAddr.
+		var portStr string
+		if len(*listenAddr) > 0 && (*listenAddr)[0] == ':' {
+			portStr = (*listenAddr)[1:]
+		} else {
+			portStr = *listenAddr
+		}
+		_, err := strconv.Atoi(portStr)
+		if err != nil {
+			log.Fatalf("Invalid port in listen address: %v", err)
+		}
+		ltOpts := localtunnel.Options{
+			Subdomain: *ltSubdomain,
+		}
+		ltListener, err := localtunnel.Listen(ltOpts)
+		if err != nil {
+			log.Fatalf("Localtunnel error: %v", err)
+		}
+		log.Printf("Localtunnel public URL: %s", ltListener.Addr())
+		// Start the proxy server on the localtunnel listener.
+		go func() {
+			if err := http.Serve(ltListener, nil); err != nil {
+				log.Fatalf("Localtunnel server error: %v", err)
+			}
+		}()
+	}
 
 	// If app mode is enabled, start a separate server for the Inspectr App.
 	if *appMode {
@@ -389,7 +437,7 @@ func main() {
 				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			}
 		})
-		// Serve embedded static assets from the sub filesystem at root.
+		// Serve embedded static assets
 		appMux.Handle("/", http.FileServer(http.FS(appStatic)))
 		go func() {
 			log.Printf("Inspectr App service listening on http://localhost:%s", *appPort)
@@ -402,7 +450,7 @@ func main() {
 	// Register the proxy handler on the main mux.
 	http.HandleFunc("/", proxyHandler(*backendAddr, *broadcastURL, enablePrint, enableBroadcast, *appMode))
 
-	// Output startup message. If a backend is configured, show forwarding info.
+	// Output startup message.
 	if *backendAddr != "" {
 		log.Printf("Inspectr Proxy service listening on %s -> forwarding to %s", *listenAddr, *backendAddr)
 	} else {

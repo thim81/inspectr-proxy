@@ -16,12 +16,13 @@ For more information on Inspectr visit the [Inspectr documentation](https://gith
 - **HTTP Proxy:** Forwards incoming requests to a configured backend service and returns the backend response.
 - **Request & Response Inspection:** Captures full request and response details (including headers, payload, query
   parameters, status codes, etc.).
-- **Webhook Inspection:** Receive incoming webhook requests for easier debugging (including headers, payload, query
-  parameters, status codes, etc.).
+- **Webhook Inspection:** Receive incoming webhook payloads for easier debugging, without requiring a backend.
 - **Console Logging:** Optionally prints a color‑coded summary of each request/response to the terminal.
 - **Remote Broadcasting:** Optionally sends the captured data via HTTP POST to a remote broadcast destination (e.g. for
   central logging or further processing).
 - **Embedded Inspectr UI:** (Optional) Serves an embedded Inspectr App UI with SSE endpoints for real‑time monitoring.
+- **Public Exposure with Localtunnel:** (Optional) Exposes your proxy publicly via [Localtunnel](https://theboroer.github.io/localtunnel-www/) with the ability to define a custom subdomain.
+
 
 ## Installation
 
@@ -53,14 +54,16 @@ example:
 
 ### Command-Line Flags
 
-| Flag          | Type    | Default   | Description                                                                                                           |
-|---------------|---------|-----------|-----------------------------------------------------------------------------------------------------------------------|
-| `--listen`    | string  | `:8080`   | Address (port) on which the Inspectr proxy listens for incoming HTTP requests.                                        |
-| `--backend`   | string  | `(empty)` | Backend service address (e.g. "http://localhost:3000"). If empty, the proxy returns a default 200 OK response.        |
-| `--broadcast` | string  | `(empty)` | Optional, a remote URL to which the captured requests are sent via HTTP POST ( e.g. "http://localhost:9999/api/sse"). |
-| `--print`     | boolean | `false`   | If true, prints a color‑coded summary of each request/response to the console.                                        |
-| `--app`       | boolean | `false`   | If true, starts the embedded Inspectr App service (serves static assets and SSE endpoints).                           |
-| `--appPort`   | string  | `4004`    | Port on which the Inspectr App service runs when `--app` is enabled.                                                  |
+| Flag                     | Type    | Default   | Description                                                                                                        |
+|--------------------------|---------|-----------|--------------------------------------------------------------------------------------------------------------------|
+| `--listen`               | string  | `:8080`   | Address (port) on which the Inspectr proxy listens for incoming HTTP requests.                                     |
+| `--backend`              | string  | `(empty)` | Backend service address (e.g. "http://localhost:3000"). If empty, the proxy returns a default 200 OK response.     |
+| `--broadcast`            | string  | `(empty)` | Optional remote URL to which the captured requests are sent via HTTP POST ( e.g. "http://localhost:9999/api/sse"). |
+| `--print`                | boolean | `false`   | If true, prints a color‑coded summary of each request/response to the console.                                     |
+| `--app`                  | boolean | `false`   | If true, starts the embedded Inspectr App service (serves static assets and SSE endpoints).                        |
+| `--appPort`              | string  | `4004`    | Port on which the Inspectr App service runs when `--app` is enabled.                                               |
+| `--localtunnel`          | boolean | `false`   | If true, enables Localtunnel to expose the proxy publicly.                                                         |
+| `--localtunnelSubdomain` | string  | `4004`    | Optional preferred subdomain for Localtunnel..                                                                     |
 
 ### Running the Embedded Inspectr UI
 
@@ -75,13 +78,39 @@ For example, if you run:
 Then visit http://localhost:4004 in your browser to view the Inspectr UI. The SSE endpoint is available
 at http://localhost:4004/api/sse.
 
+### Exposing Inspectr Proxy Publicly with Localtunnel
+
+> Localtunnel is a free and open-source tool that lets you easily share local web services publicly. It assigns a unique URL (like https://inspectr-abc.loca.lt) that forwards requests to your locally running server (e.g., http://localhost:3000), bypassing DNS and firewall hassles.
+
+If you enable Localtunnel with `--localtunnel`, the proxy will be exposed publicly. Optionally, use `--localtunnelSubdomain` to request a custom subdomain.
+
+For example:
+
+```bash
+./inspectr --listen=":8080" \
+--backend="http://localhost:3000" \
+--broadcast="http://localhost:9999/api/sse" \
+--print=true \
+--app=true \
+--appPort="9999" \
+--localtunnel=true \
+--localtunnelSubdomain="myinspectr"
+````
+
+This will:
+
+- Expose the proxy publicly via Localtunnel (attempting to use the subdomain "myinspectr"), forwarding requests to the Proxy on `8080`.
+- Listen on port 8080 and forward requests to the backend at port 3000.
+- Print and broadcast captured data.
+- Start the Inspectr App service on port 9999.
+
+
 ## How It Works
 
 1. Proxy Mode:
 
    The proxy listens on the specified `--listen` address. If a backend is defined via `--backend`, it forwards the
-   incoming
-   HTTP request to that backend and relays the response back to the client.
+   incoming HTTP request to that backend and relays the response back to the client. If `--localtunnel` is enabled, the proxy is exposed publicly via a Localtunnel listener.
 
 2. Data Capture & Wrapping:
 
@@ -135,10 +164,13 @@ broadcasting the webhook data:
 ./inspectr --listen=":8080" \
 --print=true \
 --app=true
+--localtunnel=true \
+--localtunnelSubdomain="myinspectr"
 ```
 
 Explanation:
 
+- Via the free Opensource service of [Localtunnel](https://theboroer.github.io/localtunnel-www/), a public URL is linked to the Inspectr Proxy service.
 - The proxy listens on port 8080 and immediately returns a 200 OK response for every incoming webhook event.
 - The webhook event payload details are captured and printed to the console.
 - The captured webhook event is send to the Inspectr UI service. Visit http://localhost:40004 to see the Inspectr UI in
