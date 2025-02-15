@@ -7,6 +7,8 @@ even serve an embedded Inspectr UI with real‑time Server‑Sent Events (SSE) f
 
 <img src="https://raw.githubusercontent.com/thim81/inspectr/main/assets/inspectr-app.png" alt="Request Inspectr" width="80%">
 
+<img src="https://raw.githubusercontent.com/thim81/inspectr/main/assets/inspectr-console.png" alt="Console Inspectr" width="80%">
+
 For more information on Inspectr visit the [Inspectr documentation](https://github.com/thim81/inspectr).
 
 ## Features
@@ -25,8 +27,7 @@ For more information on Inspectr visit the [Inspectr documentation](https://gith
 
 ### Download Binary
 
-Alternatively, you can download pre‑compiled binaries from
-the [Releases](https://github.com/thim81/inspectr-proxy/releases) page.
+Alternatively, you can download pre‑compiled binaries from the [Releases](https://github.com/thim81/inspectr-proxy/releases) page.
 
 ### Build from Source
 
