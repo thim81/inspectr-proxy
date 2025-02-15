@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"net"
@@ -161,7 +162,7 @@ func sseHandler(w http.ResponseWriter, r *http.Request) {
 	sseClientsMu.Lock()
 	sseClients[clientID] = msgChan
 	sseClientsMu.Unlock()
-	log.Printf("🟢 SSE client connected: %s, total clients: %d", clientID, len(sseClients))
+	//log.Printf("🟢 SSE client connected: %s, total clients: %d", clientID, len(sseClients))
 
 	// Listen for messages and write them to the ResponseWriter.
 	notify := r.Context().Done()
@@ -174,7 +175,7 @@ func sseHandler(w http.ResponseWriter, r *http.Request) {
 			sseClientsMu.Lock()
 			delete(sseClients, clientID)
 			sseClientsMu.Unlock()
-			log.Printf("🔴 SSE client disconnected: %s", clientID)
+			//log.Printf("🔴 SSE client disconnected: %s", clientID)
 			return
 		}
 	}
@@ -246,13 +247,14 @@ func proxyHandler(backendAddr, broadcastURL string, enablePrint, enableBroadcast
 		var respTimestamp string
 
 		if backendAddr != "" {
-			// Build backend URL.
-			backendURL := &url.URL{
-				Scheme:   "http",
-				Host:     backendAddr,
-				Path:     r.URL.Path,
-				RawQuery: r.URL.RawQuery,
+			// Parse the backend address.
+			parsedBackend, err := url.Parse(backendAddr)
+			if err != nil {
+				http.Error(w, "Invalid backend address", http.StatusInternalServerError)
+				return
 			}
+			// Resolve the incoming request relative to the backend URL.
+			backendURL := parsedBackend.ResolveReference(r.URL)
 
 			// Create a new request for the backend.
 			newReq, err := http.NewRequest(r.Method, backendURL.String(), bytes.NewReader(reqBodyBytes))
@@ -370,9 +372,15 @@ func main() {
 
 	// If app mode is enabled, start a separate server for the Inspectr App.
 	if *appMode {
+		// Get a sub-FS for the app folder so that the files appear at the FS root.
+		appStatic, err := fs.Sub(embeddedAppFS, "app")
+		if err != nil {
+			log.Fatal("Failed to create sub filesystem: ", err)
+		}
+
 		appMux := http.NewServeMux()
 		// SSE endpoint.
-		appMux.HandleFunc("/sse", func(w http.ResponseWriter, r *http.Request) {
+		appMux.HandleFunc("/api/sse", func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == "GET" {
 				sseHandler(w, r)
 			} else if r.Method == "POST" {
@@ -381,8 +389,8 @@ func main() {
 				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			}
 		})
-		// Serve embedded static assets under /app/.
-		appMux.Handle("/app/", http.StripPrefix("/app/", http.FileServer(http.FS(embeddedAppFS))))
+		// Serve embedded static assets from the sub filesystem at root.
+		appMux.Handle("/", http.FileServer(http.FS(appStatic)))
 		go func() {
 			log.Printf("Inspectr App server listening on :%s", *appPort)
 			if err := http.ListenAndServe(":"+*appPort, appMux); err != nil {
