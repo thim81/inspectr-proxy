@@ -27,3 +27,5 @@ go.work.sum
 app
 frontend
 
+# Added by goreleaser init:
+dist/

@@ -12,6 +12,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "dependencies": {
+    "@inspectr/app": "^0.0.2"
+  },
   "keywords": [
     "inspectr",
     "inspector",
@@ -23,8 +26,5 @@
     "response",
     "webhooks",
     "SSE"
-  ],
-  "dependencies": {
-    "@inspectr/app": "^0.0.1"
-  }
+  ]
 }

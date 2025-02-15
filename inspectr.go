@@ -392,17 +392,24 @@ func main() {
 		// Serve embedded static assets from the sub filesystem at root.
 		appMux.Handle("/", http.FileServer(http.FS(appStatic)))
 		go func() {
-			log.Printf("Inspectr App server listening on :%s", *appPort)
+			log.Printf("Inspectr App service listening on http://localhost:%s", *appPort)
 			if err := http.ListenAndServe(":"+*appPort, appMux); err != nil {
-				log.Fatal("Inspectr App server error:", err)
+				log.Fatal("Inspectr App service error:", err)
 			}
 		}()
 	}
 
 	// Register the proxy handler on the main mux.
 	http.HandleFunc("/", proxyHandler(*backendAddr, *broadcastURL, enablePrint, enableBroadcast, *appMode))
-	log.Printf("Inspectr Proxy server listening on %s", *listenAddr)
+
+	// Output startup message. If a backend is configured, show forwarding info.
+	if *backendAddr != "" {
+		log.Printf("Inspectr Proxy service listening on %s -> forwarding to %s", *listenAddr, *backendAddr)
+	} else {
+		log.Printf("Inspectr Proxy service listening on %s", *listenAddr)
+	}
+
 	if err := http.ListenAndServe(*listenAddr, nil); err != nil {
-		log.Fatal("Inspectr Proxy server error:", err)
+		log.Fatal("Inspectr Proxy service error:", err)
 	}
 }
