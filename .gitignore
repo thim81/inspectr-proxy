@@ -15,7 +15,7 @@
 *.out
 
 # Dependency directories
- vendor/
+vendor
 
 # Go workspace file
 go.work
@@ -26,3 +26,4 @@ go.work.sum
 
 app
 frontend
+
